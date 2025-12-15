@@ -278,10 +278,18 @@ export default function InvestmentCalculator() {
     );
   };
 
-  const cardStyle = { background: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #e5e5e5', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' };
+  const cardStyle = {
+    background: 'rgba(255, 255, 255, 0.55)',
+    borderRadius: '26px',
+    padding: '20px',
+    border: '1px solid rgba(255,255,255,0.45)',
+    boxShadow: '0 30px 80px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
+    backdropFilter: 'blur(24px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+  };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #fafafa 0%, #f5f5f4 100%)', color: '#1c1917', padding: '24px', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'transparent', color: '#1c1917', padding: '24px', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -299,7 +307,7 @@ export default function InvestmentCalculator() {
 
         {/* Instructions */}
         {showInstructions && (
-          <div style={{ ...cardStyle, marginBottom: '24px' }}>
+            <div style={{ ...cardStyle, marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Info size={20} color="#2563eb" />
