@@ -60,4 +60,18 @@ The generated file is self-contained (no build step, no npm install) and is idea
 - `shareable/codepen.html` – output from `npm run deploy:share`, ready to paste into online sandboxes.
 - `public/` – static assets copied as-is during `npm run build`.
 
+## GitHub Pages Deployment
+
+This repository is already wired for GitHub Pages:
+
+1. Vite’s `base` is set to `/investment-calculator/` in `vite.config.js` so assets load from the Pages path.
+2. `.github/workflows/deploy.yml` builds the site (`npm ci && npm run build`) and uses `actions/deploy-pages@v4` to publish `dist/`.
+3. Pages is served from `https://abeer91.github.io/investment-calculator/`. Any push to `main` automatically rebuilds and redeploys.
+
+If you fork the repo:
+
+- Update the `base` path to match your repo name.
+- In **Settings → Pages**, choose **GitHub Actions** as the source (no template needed).
+- Keep the existing workflow or regenerate it with your preferred Node version.
+
 Happy investing! 🧮📈
