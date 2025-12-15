@@ -20,7 +20,7 @@ describe('generateYearlyData', () => {
       expect(yearly[0]).toMatchObject(expectations.yearlyStart);
       const last = yearly[yearly.length - 1];
       expect(last.year).toBe(expectations.yearlyEnd.year);
-      expect(last.nominalValue).toBeCloseTo(expectations.yearlyEnd.nominalValue, 6);
+      expect(last.portfolioValue).toBeCloseTo(expectations.yearlyEnd.portfolioValue, 6);
       expect(last.realValue).toBeCloseTo(expectations.yearlyEnd.realValue, 6);
     });
   });

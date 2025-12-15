@@ -28,8 +28,8 @@ export const GOLDEN_DATA = [
         totalLoanPayment: 1455931.1322642928,
         emi: 12132.759435535774,
       },
-      yearlyStart: { year: 0, nominalValue: 1000000, realValue: 1000000 },
-      yearlyEnd: { year: 10, nominalValue: 1416645.97605195, realValue: 736504.9689015745 },
+      yearlyStart: { year: 0, portfolioValue: 1000000, realValue: 1000000 },
+      yearlyEnd: { year: 10, portfolioValue: 2872577.1083162427, realValue: 1493434.0333383656 },
     },
   },
   {
@@ -56,8 +56,8 @@ export const GOLDEN_DATA = [
         inflationLoss: 7307698.709522921,
         totalInvested: 4500000,
       },
-      yearlyStart: { year: 0, nominalValue: 0, realValue: 0 },
-      yearlyEnd: { year: 15, nominalValue: 7189738.541316217, realValue: 2695160.4226966463 },
+      yearlyStart: { year: 0, portfolioValue: 0, realValue: 0 },
+      yearlyEnd: { year: 15, portfolioValue: 11689738.541316217, realValue: 4382039.831793296 },
     },
   },
 ];

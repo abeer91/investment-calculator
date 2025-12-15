@@ -159,23 +159,24 @@ function computeSipMetrics(strategy, inflationRate) {
 export function generateYearlyData(strategy, inflationRate) {
   const data = [];
   for (let year = 0; year <= strategy.analysisPeriod; year++) {
-    let nominalValue = 0;
+    let portfolioValue = 0;
+    let netValue = 0;
     if (strategy.type === STRATEGY_TYPES.LOAN) {
       const emi = calculateEMI(strategy.loanAmount, strategy.loanRate, strategy.loanTerm);
       const totalPaid = Math.min(emi * year * 12, emi * strategy.loanTerm * 12);
-      const portfolioValue = year === 0
+      portfolioValue = year === 0
         ? strategy.loanAmount
         : calculatePortfolioGrowth(strategy.loanAmount, strategy.goldAPR, strategy.stockAPR, strategy.goldRatio, year);
-      nominalValue = portfolioValue - totalPaid;
+      netValue = portfolioValue - totalPaid;
     } else {
       const totalInvested = strategy.monthlyInvestment * 12 * year;
-      const portfolioValue = year === 0
+      portfolioValue = year === 0
         ? 0
         : calculateSIPFutureValue(strategy.monthlyInvestment, strategy.goldAPR, strategy.stockAPR, strategy.goldRatio, year);
-      nominalValue = portfolioValue - totalInvested;
+      netValue = portfolioValue - totalInvested;
     }
-    const realValue = calculateRealValue(nominalValue, inflationRate, year);
-    data.push({ year, nominalValue, realValue });
+    const realValue = calculateRealValue(portfolioValue, inflationRate, year);
+    data.push({ year, portfolioValue, netValue, realValue });
   }
   return data;
 }
@@ -197,7 +198,7 @@ export function buildChartSeries(strategies, inflationRate) {
       if (year <= series.analysisPeriod) {
         const point = series.points[year];
         if (point) {
-          row[`strategy${idx}_nominal`] = point.nominalValue;
+          row[`strategy${idx}_nominal`] = point.portfolioValue;
           row[`strategy${idx}_real`] = point.realValue;
         }
       }

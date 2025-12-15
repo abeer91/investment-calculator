@@ -501,7 +501,7 @@ export default function InvestmentCalculator() {
                     {savedStrategies.map(strategy => {
                       const yearlyData = generateYearlyData(strategy, inflationRate);
                       const finalData = yearlyData[yearlyData.length - 1];
-                      const nominalValue = finalData?.nominalValue || 0;
+                      const nominalValue = finalData?.portfolioValue || 0;
                       const realValue = finalData?.realValue || 0;
                       
                       const metrics = computeStrategyMetrics(strategy, inflationRate);
