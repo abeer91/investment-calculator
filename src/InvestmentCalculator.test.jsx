@@ -3,10 +3,10 @@ import { describe, it, expect } from 'vitest';
 import InvestmentCalculator from './InvestmentCalculator.jsx';
 
 describe('InvestmentCalculator', () => {
-  it('renders the hero heading', () => {
+  it('renders the hero art (or fallback heading)', () => {
     render(<InvestmentCalculator />);
     expect(
-      screen.getByRole('heading', { name: /investment strategy calculator/i }),
+      screen.getByAltText(/investment strategy calculator/i),
     ).toBeInTheDocument();
   });
 

@@ -75,6 +75,8 @@ const sliderBaseStyle = {
   WebkitAppearance: 'none',
   appearance: 'none',
 };
+const HEADER_IMAGE = `${import.meta.env.BASE_URL}header.png`;
+
 const RETURN_MODELING = {
   gold: {
     title: 'Gold APR Modeling',
@@ -115,6 +117,7 @@ export default function InvestmentCalculator() {
   const [inflationRate, setInflationRate] = useState(6.76);
   const [inflationPreset, setInflationPreset] = useState('HISTORICAL_15YR');
   const isLoanStrategy = strategyType === STRATEGY_TYPES.LOAN;
+  const [showFallbackTitle, setShowFallbackTitle] = useState(false);
 
   const currentStrategy = useMemo(() => {
     if (isLoanStrategy) {
@@ -282,13 +285,16 @@ export default function InvestmentCalculator() {
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-            <div style={{ padding: '12px', background: 'linear-gradient(135deg, #2563eb, #059669)', borderRadius: '12px', boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}>
-              <Calculator size={28} color="white" />
-            </div>
-            <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#1c1917' }}>Investment Strategy Calculator</h1>
-          </div>
-          <p style={{ color: '#737373', fontSize: '16px' }}>Compare loan-based and SIP investment strategies</p>
+          <img
+            src={HEADER_IMAGE}
+            alt="Investment Strategy Calculator"
+            onError={() => setShowFallbackTitle(true)}
+            style={{ maxWidth: '320px', width: '100%', margin: '0 auto', display: showFallbackTitle ? 'none' : 'block' }}
+          />
+          {showFallbackTitle && (
+            <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#1c1917', margin: '16px 0 6px' }}>Investment Strategy Calculator</h1>
+          )}
+          <p style={{ color: '#737373', fontSize: '16px', marginTop: '12px' }}>Compare loan-based and SIP investment strategies</p>
         </div>
 
         {/* Instructions */}
