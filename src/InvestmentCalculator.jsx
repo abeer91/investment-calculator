@@ -38,6 +38,44 @@ const INFLATION_PRESETS = {
 };
 
 const strategyColors = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5'];
+const SHARE_QUERY_PARAM = 's';
+
+const encodeSharePayload = (data) => {
+  if (typeof window === 'undefined') return '';
+  const json = JSON.stringify(data);
+  return window.btoa(encodeURIComponent(json));
+};
+
+const decodeSharePayload = (encoded) => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const json = decodeURIComponent(window.atob(encoded));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+};
+
+const hydrateSharedStrategies = (data = []) => {
+  if (!Array.isArray(data)) return [];
+  return data.map((strategy, idx) => ({
+    id: Date.now() + idx,
+    color: strategy.color || strategyColors[idx % strategyColors.length],
+    name: strategy.name || `Strategy ${idx + 1}`,
+    ...strategy,
+  }));
+};
+
+const readSharedStrategiesFromUrl = () => {
+  if (typeof window === 'undefined') return [];
+  const params = new URLSearchParams(window.location.search);
+  const encoded = params.get(SHARE_QUERY_PARAM);
+  if (!encoded) return [];
+  const decoded = decodeSharePayload(encoded);
+  if (!decoded) return [];
+  return hydrateSharedStrategies(decoded);
+};
+
 const METRIC_DETAILS = {
   nominal: {
     icon: '📊',
@@ -112,12 +150,14 @@ export default function InvestmentCalculator() {
   const [stockAPRB, setStockAPRB] = useState(12.8);
   const [goldRatioB, setGoldRatioB] = useState(40);
   const [analysisPeriod, setAnalysisPeriod] = useState(15);
-  const [savedStrategies, setSavedStrategies] = useState([]);
-  const [strategyCounter, setStrategyCounter] = useState(1);
+  const sharedSeed = useMemo(() => readSharedStrategiesFromUrl(), []);
+  const [savedStrategies, setSavedStrategies] = useState(sharedSeed);
+  const [strategyCounter, setStrategyCounter] = useState(sharedSeed.length + 1);
   const [inflationRate, setInflationRate] = useState(6.76);
   const [inflationPreset, setInflationPreset] = useState('HISTORICAL_15YR');
   const isLoanStrategy = strategyType === STRATEGY_TYPES.LOAN;
   const [showFallbackTitle, setShowFallbackTitle] = useState(false);
+  const [shareStatus, setShareStatus] = useState(sharedSeed.length ? 'Loaded from shared link' : '');
 
   const currentStrategy = useMemo(() => {
     if (isLoanStrategy) {
@@ -208,6 +248,35 @@ export default function InvestmentCalculator() {
   ]);
 
   const chartData = useMemo(() => buildChartSeries(chartStrategies, inflationRate), [chartStrategies, inflationRate]);
+
+  const serializeStrategies = (strategies) => {
+    return strategies.map(strategy => {
+      if (strategy.type === STRATEGY_TYPES.LOAN) {
+        const { name, type, analysisPeriod, color, loanAmount, loanRate, loanTerm, goldAPR, stockAPR, goldRatio } = strategy;
+        return { name, type, analysisPeriod, color, loanAmount, loanRate, loanTerm, goldAPR, stockAPR, goldRatio };
+      }
+      const { name, type, analysisPeriod, color, monthlyInvestment, goldAPR, stockAPR, goldRatio } = strategy;
+      return { name, type, analysisPeriod, color, monthlyInvestment, goldAPR, stockAPR, goldRatio };
+    });
+  };
+
+  const generateShareLink = () => {
+    if (!savedStrategies.length) return;
+    try {
+      const payload = serializeStrategies(savedStrategies);
+      const encoded = encodeSharePayload(payload);
+      const url = `${window.location.origin}${import.meta.env.BASE_URL}?${SHARE_QUERY_PARAM}=${encoded}`;
+      if (navigator?.clipboard?.writeText) {
+        navigator.clipboard.writeText(url);
+        setShareStatus('Link copied to clipboard');
+      } else {
+        setShareStatus(url);
+      }
+    } catch (error) {
+      console.error('Unable to generate share link', error);
+      setShareStatus('Unable to generate link');
+    }
+  };
 
   const addStrategy = () => {
     const newStrategy = {
@@ -477,7 +546,27 @@ export default function InvestmentCalculator() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '24px' }}>
           {savedStrategies.length > 0 && (
             <div style={cardStyle}>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#1c1917' }}>Saved Strategies ({savedStrategies.length})</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '12px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1c1917', margin: 0 }}>Saved Strategies ({savedStrategies.length})</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {shareStatus && <span style={{ fontSize: '12px', color: '#059669' }}>{shareStatus}</span>}
+                  <button
+                    onClick={generateShareLink}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: '999px',
+                      border: 'none',
+                      background: '#0ea5e9',
+                      color: 'white',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                    }}
+                  >
+                    Copy Share Link
+                  </button>
+                </div>
+              </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                   <thead>
