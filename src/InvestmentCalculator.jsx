@@ -669,7 +669,13 @@ export default function InvestmentCalculator() {
           </div>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '32px', color: '#a3a3a3', fontSize: '13px' }}>All calculations are estimates. Actual returns may vary based on market conditions.</div>
+        <div style={{ textAlign: 'center', marginTop: '32px', color: '#a3a3a3', fontSize: '12px', lineHeight: 1.6 }}>
+          <div><strong>Disclaimer:</strong> Educational use only. Do not use commercially or as financial advice.</div>
+          <div>All numbers are estimates and actual returns, taxes, and market behavior can differ dramatically. The author is not liable for any outcomes.</div>
+          <div style={{ marginTop: '6px' }}>
+            Built by <a href="https://github.com/abeer91" style={{ color: '#2563eb', textDecoration: 'none' }}>@abeer91</a>
+          </div>
+        </div>
       </div>
     </div>
   );
