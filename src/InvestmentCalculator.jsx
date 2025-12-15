@@ -1,6 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { TrendingUp, Plus, Trash2, Calculator, PiggyBank, Wallet, BarChart3, Info, HelpCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts';
+import {
+  STRATEGY_TYPES,
+  computeStrategyMetrics,
+  generateYearlyData,
+  buildChartSeries,
+  calculateRealValue,
+} from './lib/finance.js';
 
 const formatINR = (num) => {
   if (num === undefined || num === null || isNaN(num)) return '₹0';
@@ -18,35 +25,6 @@ const formatINRFull = (num) => {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num);
 };
 
-const calculateEMI = (principal, annualRate, years) => {
-  const monthlyRate = annualRate / 100 / 12;
-  const months = years * 12;
-  if (monthlyRate === 0) return principal / months;
-  return (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
-};
-
-const calculatePortfolioGrowth = (principal, goldAPR, stockAPR, goldRatio, years) => {
-  const goldGrowth = (principal * goldRatio / 100) * Math.pow(1 + goldAPR / 100, years);
-  const stockGrowth = (principal * (100 - goldRatio) / 100) * Math.pow(1 + stockAPR / 100, years);
-  return goldGrowth + stockGrowth;
-};
-
-const calculateSIPFutureValue = (monthlyAmount, goldAPR, stockAPR, goldRatio, years) => {
-  const months = years * 12;
-  const goldMonthly = monthlyAmount * goldRatio / 100;
-  const stockMonthly = monthlyAmount * (100 - goldRatio) / 100;
-  const goldRate = goldAPR / 100 / 12;
-  const stockRate = stockAPR / 100 / 12;
-  const goldFV = goldRate > 0 ? goldMonthly * ((Math.pow(1 + goldRate, months) - 1) / goldRate) * (1 + goldRate) : goldMonthly * months;
-  const stockFV = stockRate > 0 ? stockMonthly * ((Math.pow(1 + stockRate, months) - 1) / stockRate) * (1 + stockRate) : stockMonthly * months;
-  return goldFV + stockFV;
-};
-
-const calculateCAGR = (initialValue, finalValue, years) => {
-  if (initialValue <= 0 || years === 0) return 0;
-  return (Math.pow(finalValue / initialValue, 1 / years) - 1) * 100;
-};
-
 // ============================================================================
 // INFLATION ADJUSTMENT FUNCTIONS
 // ============================================================================
@@ -57,18 +35,6 @@ const INFLATION_PRESETS = {
   OPTIMISTIC: { label: 'Optimistic', rate: 4.5, color: '#84cc16' },
   BASE_CASE: { label: 'Base Case', rate: 6.0, color: '#f59e0b' },
   BEARISH: { label: 'Bearish', rate: 7.5, color: '#ef4444' },
-};
-
-const calculateRealValue = (nominalValue, inflationRate, years) => {
-  if (years === 0 || inflationRate === 0) return nominalValue;
-  const inflationFactor = Math.pow(1 + inflationRate / 100, years);
-  return nominalValue / inflationFactor;
-};
-
-const calculateRealCAGR = (initialValue, finalNominalValue, inflationRate, years) => {
-  if (initialValue <= 0 || years === 0) return 0;
-  const finalRealValue = calculateRealValue(finalNominalValue, inflationRate, years);
-  return (Math.pow(finalRealValue / initialValue, 1 / years) - 1) * 100;
 };
 
 const strategyColors = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5'];
@@ -131,7 +97,7 @@ const RETURN_MODELING = {
 };
 
 export default function InvestmentCalculator() {
-  const [strategyType, setStrategyType] = useState('A');
+  const [strategyType, setStrategyType] = useState(STRATEGY_TYPES.LOAN);
   const [showInstructions, setShowInstructions] = useState(true);
   const [loanAmount, setLoanAmount] = useState(1000000);
   const [loanRate, setLoanRate] = useState(8);
@@ -148,13 +114,14 @@ export default function InvestmentCalculator() {
   const [strategyCounter, setStrategyCounter] = useState(1);
   const [inflationRate, setInflationRate] = useState(6.76);
   const [inflationPreset, setInflationPreset] = useState('HISTORICAL_15YR');
+  const isLoanStrategy = strategyType === STRATEGY_TYPES.LOAN;
 
   const currentStrategy = useMemo(() => {
-    if (strategyType === 'A') {
+    if (isLoanStrategy) {
       return {
         id: 'current-preview',
         name: 'Strategy A (Current)',
-        type: 'A',
+        type: STRATEGY_TYPES.LOAN,
         analysisPeriod,
         color: '#2563eb',
         loanAmount,
@@ -168,7 +135,7 @@ export default function InvestmentCalculator() {
     return {
       id: 'current-preview',
       name: 'Strategy B (Current)',
-      type: 'B',
+      type: STRATEGY_TYPES.SIP,
       analysisPeriod,
       color: '#059669',
       monthlyInvestment,
@@ -177,7 +144,7 @@ export default function InvestmentCalculator() {
       goldRatio: goldRatioB,
     };
   }, [
-    strategyType,
+    isLoanStrategy,
     analysisPeriod,
     loanAmount,
     loanRate,
@@ -200,100 +167,44 @@ export default function InvestmentCalculator() {
   };
 
   const currentMetrics = useMemo(() => {
-    if (strategyType === 'A') {
-      const emi = calculateEMI(loanAmount, loanRate, loanTerm);
-      const totalLoanPayment = emi * loanTerm * 12;
-      const nominalPortfolioValue = calculatePortfolioGrowth(loanAmount, goldAPRA, stockAPRA, goldRatioA, analysisPeriod);
-      const netReturn = nominalPortfolioValue - totalLoanPayment;
-      
-      // NEW: Inflation-adjusted values
-      const realPortfolioValue = calculateRealValue(nominalPortfolioValue, inflationRate, analysisPeriod);
-      const realNetReturn = realPortfolioValue - totalLoanPayment;
-      
-      return { 
-        emi, 
-        totalLoanPayment, 
-        nominalPortfolioValue, 
-        netReturn, 
-        nominalROI: (netReturn / loanAmount) * 100, 
-        nominalCAGR: calculateCAGR(loanAmount, nominalPortfolioValue, analysisPeriod),
-        // NEW inflation-adjusted metrics
-        inflationRate,
-        realPortfolioValue,
-        realNetReturn,
-        realROI: (realNetReturn / loanAmount) * 100,
-        realCAGR: calculateRealCAGR(loanAmount, nominalPortfolioValue, inflationRate, analysisPeriod),
-        inflationLoss: nominalPortfolioValue - realPortfolioValue,
-      };
-    }
-    const totalInvested = monthlyInvestment * 12 * analysisPeriod;
-    const nominalPortfolioValue = calculateSIPFutureValue(monthlyInvestment, goldAPRB, stockAPRB, goldRatioB, analysisPeriod);
-    const netReturn = nominalPortfolioValue - totalInvested;
-    
-    // NEW: Inflation-adjusted values
-    const realPortfolioValue = calculateRealValue(nominalPortfolioValue, inflationRate, analysisPeriod);
-    const realNetReturn = realPortfolioValue - totalInvested;
-    
-    return { 
-      totalInvested, 
-      nominalPortfolioValue, 
-      netReturn, 
-      nominalROI: (netReturn / totalInvested) * 100, 
-      nominalCAGR: calculateCAGR(totalInvested, nominalPortfolioValue, analysisPeriod),
-      // NEW inflation-adjusted metrics
-      inflationRate,
-      realPortfolioValue,
-      realNetReturn,
-      realROI: (realNetReturn / totalInvested) * 100,
-      realCAGR: calculateRealCAGR(totalInvested, nominalPortfolioValue, inflationRate, analysisPeriod),
-      inflationLoss: nominalPortfolioValue - realPortfolioValue,
-    };
-  }, [strategyType, loanAmount, loanRate, loanTerm, goldAPRA, stockAPRA, goldRatioA, monthlyInvestment, goldAPRB, stockAPRB, goldRatioB, analysisPeriod, inflationRate]);
-
-  const generateYearlyData = (strategy, inflation = 6.0) => {
-    const data = [];
-    for (let year = 0; year <= strategy.analysisPeriod; year++) {
-      let nominalValue = 0;
-      if (strategy.type === 'A') {
-        const emi = calculateEMI(strategy.loanAmount, strategy.loanRate, strategy.loanTerm);
-        const totalPaid = Math.min(emi * year * 12, emi * strategy.loanTerm * 12);
-        const portfolioValue = year === 0 ? strategy.loanAmount : calculatePortfolioGrowth(strategy.loanAmount, strategy.goldAPR, strategy.stockAPR, strategy.goldRatio, year);
-        nominalValue = portfolioValue - totalPaid;
-      } else {
-        const totalInvested = strategy.monthlyInvestment * 12 * year;
-        const portfolioValue = year === 0 ? 0 : calculateSIPFutureValue(strategy.monthlyInvestment, strategy.goldAPR, strategy.stockAPR, strategy.goldRatio, year);
-        nominalValue = portfolioValue - totalInvested;
-      }
-      // NEW: Calculate real value
-      const realValue = calculateRealValue(nominalValue, inflation, year);
-      data.push({ year, nominalValue, realValue });
-    }
-    return data;
-  };
-
-  const chartData = useMemo(() => {
-    if (chartStrategies.length === 0) return [];
-    const seriesData = chartStrategies.map(strategy => ({
-      analysisPeriod: strategy.analysisPeriod,
-      points: generateYearlyData(strategy, inflationRate),
-    }));
-    const maxYears = Math.max(...chartStrategies.map(s => s.analysisPeriod));
-    const data = [];
-    for (let year = 0; year <= maxYears; year++) {
-      const point = { year };
-      seriesData.forEach((series, idx) => {
-        if (year <= series.analysisPeriod) {
-          const yearPoint = series.points[year];
-          if (yearPoint) {
-            point[`strategy${idx}_nominal`] = yearPoint.nominalValue;
-            point[`strategy${idx}_real`] = yearPoint.realValue;
-          }
+    const strategyPayload = isLoanStrategy
+      ? {
+          type: STRATEGY_TYPES.LOAN,
+          loanAmount,
+          loanRate,
+          loanTerm,
+          goldAPR: goldAPRA,
+          stockAPR: stockAPRA,
+          goldRatio: goldRatioA,
+          analysisPeriod,
         }
-      });
-      data.push(point);
-    }
-    return data;
-  }, [chartStrategies, inflationRate]);
+      : {
+          type: STRATEGY_TYPES.SIP,
+          monthlyInvestment,
+          goldAPR: goldAPRB,
+          stockAPR: stockAPRB,
+          goldRatio: goldRatioB,
+          analysisPeriod,
+        };
+
+    return { ...computeStrategyMetrics(strategyPayload, inflationRate), inflationRate };
+  }, [
+    isLoanStrategy,
+    loanAmount,
+    loanRate,
+    loanTerm,
+    goldAPRA,
+    stockAPRA,
+    goldRatioA,
+    monthlyInvestment,
+    goldAPRB,
+    stockAPRB,
+    goldRatioB,
+    analysisPeriod,
+    inflationRate,
+  ]);
+
+  const chartData = useMemo(() => buildChartSeries(chartStrategies, inflationRate), [chartStrategies, inflationRate]);
 
   const addStrategy = () => {
     const newStrategy = {
@@ -593,22 +504,9 @@ export default function InvestmentCalculator() {
                       const nominalValue = finalData?.nominalValue || 0;
                       const realValue = finalData?.realValue || 0;
                       
-                      let initialInvestment = 0;
-                      let roi = 0;
-                      let cagrValue = 0;
-                      let portfolioValue = 0;
-                      
-                      if (strategy.type === 'A') {
-                        initialInvestment = strategy.loanAmount;
-                        portfolioValue = calculatePortfolioGrowth(strategy.loanAmount, strategy.goldAPR, strategy.stockAPR, strategy.goldRatio, strategy.analysisPeriod);
-                        roi = (nominalValue / initialInvestment) * 100;
-                        cagrValue = calculateCAGR(initialInvestment, portfolioValue, strategy.analysisPeriod);
-                      } else {
-                        initialInvestment = strategy.monthlyInvestment * 12 * strategy.analysisPeriod;
-                        portfolioValue = calculateSIPFutureValue(strategy.monthlyInvestment, strategy.goldAPR, strategy.stockAPR, strategy.goldRatio, strategy.analysisPeriod);
-                        roi = (nominalValue / initialInvestment) * 100;
-                        cagrValue = calculateCAGR(initialInvestment, portfolioValue, strategy.analysisPeriod);
-                      }
+                      const metrics = computeStrategyMetrics(strategy, inflationRate);
+                      const roi = metrics.nominalROI;
+                      const cagrValue = metrics.nominalCAGR;
                       
                       return (
                         <tr key={strategy.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
@@ -619,23 +517,23 @@ export default function InvestmentCalculator() {
                             </div>
                           </td>
                           <td style={{ padding: '10px 8px' }}>
-                            <span style={{
-                              fontSize: '10px', padding: '3px 8px', borderRadius: '9999px', fontWeight: '500',
-                              background: strategy.type === 'A' ? '#eff6ff' : '#ecfdf5',
-                              color: strategy.type === 'A' ? '#2563eb' : '#059669'
-                            }}>
-                              {strategy.type === 'A' ? 'Loan' : 'SIP'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '10px 8px', textAlign: 'right', color: '#1c1917' }}>
-                            {strategy.type === 'A' ? formatINR(strategy.loanAmount) : formatINR(strategy.monthlyInvestment) + '/mo'}
-                          </td>
-                          <td style={{ padding: '10px 8px', textAlign: 'right', color: '#1c1917' }}>
-                            {strategy.type === 'A' ? strategy.loanRate.toFixed(1) + '%' : '—'}
-                          </td>
-                          <td style={{ padding: '10px 8px', textAlign: 'right', color: '#1c1917' }}>
-                            {strategy.type === 'A' ? strategy.loanTerm + ' yr' : '—'}
-                          </td>
+                              <span style={{
+                                fontSize: '10px', padding: '3px 8px', borderRadius: '9999px', fontWeight: '500',
+                                background: strategy.type === STRATEGY_TYPES.LOAN ? '#eff6ff' : '#ecfdf5',
+                                color: strategy.type === STRATEGY_TYPES.LOAN ? '#2563eb' : '#059669'
+                              }}>
+                                {strategy.type === STRATEGY_TYPES.LOAN ? 'Loan' : 'SIP'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 8px', textAlign: 'right', color: '#1c1917' }}>
+                              {strategy.type === STRATEGY_TYPES.LOAN ? formatINR(strategy.loanAmount) : formatINR(strategy.monthlyInvestment) + '/mo'}
+                            </td>
+                            <td style={{ padding: '10px 8px', textAlign: 'right', color: '#1c1917' }}>
+                              {strategy.type === STRATEGY_TYPES.LOAN ? strategy.loanRate.toFixed(1) + '%' : '—'}
+                            </td>
+                            <td style={{ padding: '10px 8px', textAlign: 'right', color: '#1c1917' }}>
+                              {strategy.type === STRATEGY_TYPES.LOAN ? strategy.loanTerm + ' yr' : '—'}
+                            </td>
                           <td style={{ padding: '10px 8px', textAlign: 'right', color: '#d97706', fontWeight: '500' }}>
                             {strategy.goldAPR.toFixed(1)}%
                           </td>
