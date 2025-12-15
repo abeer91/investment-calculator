@@ -383,17 +383,19 @@ export default function InvestmentCalculator() {
                   </>
                 )}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', color: '#a3a3a3', marginBottom: '4px' }}>Next Strategy Name</label>
                   <input type="text" value={generateStrategyName()} readOnly style={{ width: '100%', background: '#f5f5f4', border: '1px solid #e5e5e5', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#525252', fontFamily: 'monospace' }} />
                 </div>
-                <button onClick={addStrategy} style={{
-                  padding: '12px 20px', borderRadius: '8px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-                  background: strategyType === 'A' ? '#2563eb' : '#059669', boxShadow: `0 2px 8px ${strategyType === 'A' ? 'rgba(37,99,235,0.3)' : 'rgba(5,150,105,0.3)'}`
-                }}>
-                  <Plus size={18} /> Add Strategy
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={addStrategy} style={{
+                    padding: '12px 20px', borderRadius: '8px', border: 'none', color: 'white', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px',
+                    background: strategyType === 'A' ? '#2563eb' : '#059669', boxShadow: `0 2px 8px ${strategyType === 'A' ? 'rgba(37,99,235,0.3)' : 'rgba(5,150,105,0.3)'}`
+                  }}>
+                    <Plus size={18} /> Add Strategy
+                  </button>
+                </div>
               </div>
             </div>
           </div>
