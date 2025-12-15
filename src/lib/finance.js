@@ -3,6 +3,11 @@ export const STRATEGY_TYPES = {
   SIP: 'B',
 };
 
+/**
+ * Equal Monthly Installment formula.
+ * Converts annual interest into a monthly rate and solves the amortization formula:
+ * EMI = P * r * (1+r)^n / ((1+r)^n - 1)
+ */
 export function calculateEMI(principal, annualRate, years) {
   const monthlyRate = annualRate / 100 / 12;
   const months = years * 12;
@@ -12,12 +17,19 @@ export function calculateEMI(principal, annualRate, years) {
   return (principal * monthlyRate * factor) / (factor - 1);
 }
 
+/**
+ * Projects a lump-sum portfolio split between gold and stocks using compound growth for each leg.
+ */
 export function calculatePortfolioGrowth(principal, goldAPR, stockAPR, goldRatio, years) {
   const goldGrowth = (principal * goldRatio) / 100 * Math.pow(1 + goldAPR / 100, years);
   const stockGrowth = (principal * (100 - goldRatio)) / 100 * Math.pow(1 + stockAPR / 100, years);
   return goldGrowth + stockGrowth;
 }
 
+/**
+ * Standard SIP (systematic investment plan) future-value formula for two assets.
+ * FV = contribution * ((1+r)^n - 1)/r * (1+r), calculated separately for gold and stocks.
+ */
 export function calculateSIPFutureValue(monthlyAmount, goldAPR, stockAPR, goldRatio, years) {
   const months = years * 12;
   const goldMonthly = (monthlyAmount * goldRatio) / 100;
@@ -33,23 +45,35 @@ export function calculateSIPFutureValue(monthlyAmount, goldAPR, stockAPR, goldRa
   return goldFV + stockFV;
 }
 
+/**
+ * Compound Annual Growth Rate, solving for r in final = initial * (1+r)^years.
+ */
 export function calculateCAGR(initialValue, finalValue, years) {
   if (initialValue <= 0 || years === 0) return 0;
   return (Math.pow(finalValue / initialValue, 1 / years) - 1) * 100;
 }
 
+/**
+ * Deflates a nominal amount into today's rupees using the provided inflation rate.
+ */
 export function calculateRealValue(nominalValue, inflationRate, years) {
   if (years === 0 || inflationRate === 0) return nominalValue;
   const inflationFactor = Math.pow(1 + inflationRate / 100, years);
   return nominalValue / inflationFactor;
 }
 
+/**
+ * CAGR computed on real (inflation-adjusted) returns.
+ */
 export function calculateRealCAGR(initialValue, finalNominalValue, inflationRate, years) {
   if (initialValue <= 0 || years === 0) return 0;
   const finalRealValue = calculateRealValue(finalNominalValue, inflationRate, years);
   return (Math.pow(finalRealValue / initialValue, 1 / years) - 1) * 100;
 }
 
+/**
+ * High-level helper that routes to the correct math engine based on strategy type.
+ */
 export function computeStrategyMetrics(strategy, inflationRate) {
   if (strategy.type === STRATEGY_TYPES.LOAN) {
     return computeLoanMetrics(strategy, inflationRate);
@@ -57,6 +81,9 @@ export function computeStrategyMetrics(strategy, inflationRate) {
   return computeSipMetrics(strategy, inflationRate);
 }
 
+/**
+ * Loan-based strategy math: invest the borrowed amount and subtract repayments (EMI * months).
+ */
 function computeLoanMetrics(strategy, inflationRate) {
   const {
     loanAmount,
@@ -92,6 +119,9 @@ function computeLoanMetrics(strategy, inflationRate) {
   };
 }
 
+/**
+ * SIP strategy math: monthly contributions compounded into a future value, minus total invested.
+ */
 function computeSipMetrics(strategy, inflationRate) {
   const {
     monthlyInvestment,
@@ -123,6 +153,9 @@ function computeSipMetrics(strategy, inflationRate) {
   };
 }
 
+/**
+ * Produces year-by-year nominal and real values so charts/table can show trajectory.
+ */
 export function generateYearlyData(strategy, inflationRate) {
   const data = [];
   for (let year = 0; year <= strategy.analysisPeriod; year++) {
@@ -147,6 +180,9 @@ export function generateYearlyData(strategy, inflationRate) {
   return data;
 }
 
+/**
+ * Converts multiple strategy time series into the shape Recharts expects for multi-line charts.
+ */
 export function buildChartSeries(strategies, inflationRate) {
   if (strategies.length === 0) return [];
   const seriesData = strategies.map(strategy => ({
